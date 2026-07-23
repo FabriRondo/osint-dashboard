@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 import whois
+import socket
 
 app = Flask(__name__)
 
@@ -190,6 +191,43 @@ def check_alive_subdomains(subdomains_data, limit=20):
         "details": results
     }
 
+COMMON_PORTS = {
+    21: "FTP",
+    22: "SSH",
+    23: "Telnet",
+    25: "SMTP",
+    80: "HTTP",
+    443: "HTTPS",
+    3306: "MySQL",
+    3389: "RDP",
+    5432: "PostgreSQL",
+    8080: "HTTP-alt",
+    8443: "HTTPS-alt",
+}
+
+
+def scan_ports(hostname, timeout=1):
+    """
+    Escanea un set de puertos comunes contra un hostname.
+    Devuelve la lista de puertos abiertos encontrados.
+    """
+    open_ports = []
+
+    try:
+        ip = socket.gethostbyname(hostname)
+    except socket.gaierror:
+        return {"error": f"No se pudo resolver {hostname}"}
+
+    for port, service in COMMON_PORTS.items():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        result = sock.connect_ex((ip, port))
+        sock.close()
+
+        if result == 0:
+            open_ports.append({"port": port, "service": service})
+
+    return {"hostname": hostname, "ip": ip, "open_ports": open_ports}
 
 def _check_single_subdomain(subdomain):
     """Intenta HTTPS primero, si falla intenta HTTP. Devuelve estado."""
@@ -231,6 +269,15 @@ def scan():
         "alive_check": alive_result
     })
 
+@app.route("/portscan")
+def portscan():
+    hostname = request.args.get("host")
+
+    if not hostname:
+        return jsonify({"error": "Falta el parámetro ?host=ejemplo.com"}), 400
+
+    result = scan_ports(hostname)
+    return jsonify(result)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
