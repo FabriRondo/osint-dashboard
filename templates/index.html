@@ -6,22 +6,31 @@
 <style>
     body { background: #0d1117; color: #c9d1d9; font-family: monospace; padding: 40px; }
     input { padding: 8px; width: 300px; background: #161b22; color: #fff; border: 1px solid #30363d; }
-    button { padding: 8px 16px; background: #238636; color: white; border: none; cursor: pointer; }
+    button { padding: 8px 16px; background: #238636; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #2ea043; }
     .box { background: #161b22; border: 1px solid #30363d; padding: 15px; margin-top: 15px; border-radius: 6px; }
     .risk-BAJO { color: #3fb950; }
     .risk-MEDIO { color: #d29922; }
     .risk-ALTO { color: #f85149; }
     ul { padding-left: 20px; }
+    li { margin: 6px 0; }
+    .sub-row { display: flex; align-items: center; gap: 10px; }
+    .port-btn { padding: 3px 10px; font-size: 12px; background: #21262d; border: 1px solid #30363d; }
+    .port-btn:hover { background: #30363d; }
+    .port-result { font-size: 13px; color: #8b949e; margin-top: 4px; }
+    .download-btn { background: #1f6feb; margin-top: 15px; }
 </style>
 </head>
 <body>
 <h1>🔍 OSINT Domain Dashboard</h1>
-<input id="domain" placeholder="ejemplo.com">
+<input id="domain" placeholder="ejemplo.com" onkeydown="if(event.key==='Enter') scan()">
 <button onclick="scan()">Investigar</button>
 
 <div id="results"></div>
 
 <script>
+let lastScanData = null;
+
 async function scan() {
     const domain = document.getElementById("domain").value;
     if (!domain) return;
@@ -30,6 +39,7 @@ async function scan() {
 
     const response = await fetch(`/scan?domain=${domain}`);
     const data = await response.json();
+    lastScanData = data;
 
     let html = `<div class="box">
         <h2>${data.domain}</h2>
@@ -37,13 +47,58 @@ async function scan() {
         <ul>${data.risk.findings.map(f => `<li>${f}</li>`).join("")}</ul>
     </div>`;
 
-    html += `<div class="box"><h3>Subdominios (${data.subdomains.subdomains ? data.subdomains.subdomains.length : 0})</h3>
-        <ul>${(data.subdomains.subdomains || []).map(s => `<li>${s}</li>`).join("")}</ul>
+    const subdomains = data.subdomains.subdomains || [];
+    html += `<div class="box"><h3>Subdominios (${subdomains.length})</h3>
+        <ul>${subdomains.map(s => `
+            <li>
+                <div class="sub-row">
+                    <span>${s}</span>
+                    ${s.startsWith("*.") ? "" : `<button class="port-btn" onclick="scanPorts('${s}', this)">ver puertos</button>`}
+                </div>
+                <div class="port-result" id="ports-${s.replace(/[^a-zA-Z0-9]/g, '_')}"></div>
+            </li>
+        `).join("")}</ul>
     </div>`;
 
     html += `<div class="box"><h3>WHOIS</h3><pre>${JSON.stringify(data.whois, null, 2)}</pre></div>`;
 
+    html += `<button class="download-btn" onclick="downloadJSON()">⬇ Descargar reporte JSON</button>`;
+
     document.getElementById("results").innerHTML = html;
+}
+
+async function scanPorts(hostname, btn) {
+    btn.textContent = "escaneando...";
+    btn.disabled = true;
+
+    const response = await fetch(`/portscan?host=${hostname}`);
+    const data = await response.json();
+
+    const targetId = `ports-${hostname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const el = document.getElementById(targetId);
+
+    if (data.error) {
+        el.textContent = `⚠ ${data.error}`;
+    } else if (data.open_ports.length === 0) {
+        el.textContent = `IP: ${data.ip} — sin puertos comunes abiertos`;
+    } else {
+        const portsList = data.open_ports.map(p => `${p.port}/${p.service}`).join(", ");
+        el.textContent = `IP: ${data.ip} — puertos abiertos: ${portsList}`;
+    }
+
+    btn.textContent = "ver puertos";
+    btn.disabled = false;
+}
+
+function downloadJSON() {
+    if (!lastScanData) return;
+    const blob = new Blob([JSON.stringify(lastScanData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `osint-report-${lastScanData.domain}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
 </body>
