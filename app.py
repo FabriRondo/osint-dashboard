@@ -86,6 +86,129 @@ def get_whois_info(domain):
         "expiration_date": str(expiration_date) if expiration_date else None,
         "name_servers": w.name_servers,
     }
+def calculate_risk_score(subdomains_data, alive_data=None):
+    """
+    Calcula un score de riesgo basado en:
+    - Palabras sensibles en los nombres de subdominios
+    - Cantidad total de subdominios expuestos
+    - Si un subdominio sensible está realmente vivo y responde con
+      401/403 (existe y está protegido, o sea, hay algo real ahí)
+    """
+    if "error" in subdomains_data:
+        return {"score": 0, "level": "N/A", "findings": ["No se pudo calcular: faltan datos de subdominios"]}
+
+    subdomains = subdomains_data.get("subdomains", [])
+    findings = []
+    score = 0
+
+    sensitive_keywords = ["dev", "staging", "test", "old", "admin", "vpn",
+                           "backup", "uat", "traefik", "jenkins", "gitlab",
+                           "portainer", "kibana", "grafana"]
+
+    # armamos un diccionario rápido de subdominio -> status_code si tenemos alive_check
+    alive_lookup = {}
+    if alive_data and "details" in alive_data:
+        for entry in alive_data["details"]:
+            if entry.get("alive"):
+                alive_lookup[entry["subdomain"]] = entry.get("status_code")
+
+    for sub in subdomains:
+        matched_keyword = None
+        for keyword in sensitive_keywords:
+            if keyword in sub.lower():
+                matched_keyword = keyword
+                break
+
+        if matched_keyword:
+            status_code = alive_lookup.get(sub)
+
+            if status_code in (401, 403):
+                # está vivo, protegido, y es un nombre sensible = riesgo alto real
+                score += 25
+                findings.append(
+                    f"Panel/servicio sensible EXPUESTO Y VIVO: {sub} "
+                    f"(contiene '{matched_keyword}', responde {status_code})"
+                )
+            elif status_code == 200:
+                # vivo y accesible sin login = riesgo aún mayor
+                score += 30
+                findings.append(
+                    f"Panel/servicio sensible EXPUESTO SIN AUTENTICACIÓN: {sub} "
+                    f"(contiene '{matched_keyword}', responde 200)"
+                )
+            else:
+                # solo aparece en certificados, no confirmamos que esté vivo
+                score += 10
+                findings.append(f"Subdominio con palabra sensible (no verificado si está vivo): {sub}")
+
+    total = len(subdomains)
+    if total > 30:
+        score += 20
+        findings.append(f"Superficie grande: {total} subdominios expuestos")
+    elif total > 15:
+        score += 10
+        findings.append(f"Superficie moderada: {total} subdominios expuestos")
+
+    if score <= 20:
+        level = "BAJO"
+    elif score <= 50:
+        level = "MEDIO"
+    else:
+        level = "ALTO"
+
+    return {"score": score, "level": level, "findings": findings}
+
+    return {"score": score, "level": level, "findings": findings}
+
+def check_alive_subdomains(subdomains_data, limit=20):
+    """
+    Para cada subdominio (sin contar wildcards), verifica si responde
+    por HTTPS o HTTP. Limita la cantidad para no demorar demasiado.
+    """
+    if "error" in subdomains_data:
+        return {"error": "No hay subdominios para verificar"}
+
+    subdomains = subdomains_data.get("subdomains", [])
+
+    # sacamos los wildcards (*.algo.com) porque no son URLs reales
+    real_subdomains = [s for s in subdomains if not s.startswith("*.")]
+
+    # limitamos la cantidad para que la demo no tarde una eternidad
+    to_check = real_subdomains[:limit]
+
+    results = []
+    for sub in to_check:
+        status = _check_single_subdomain(sub)
+        results.append(status)
+
+    alive_count = sum(1 for r in results if r["alive"])
+
+    return {
+        "checked": len(to_check),
+        "total_found": len(real_subdomains),
+        "alive_count": alive_count,
+        "details": results
+    }
+
+
+def _check_single_subdomain(subdomain):
+    """Intenta HTTPS primero, si falla intenta HTTP. Devuelve estado."""
+    for scheme in ["https", "http"]:
+        url = f"{scheme}://{subdomain}"
+        try:
+            response = requests.get(url, timeout=4, allow_redirects=True)
+            return {
+                "subdomain": subdomain,
+                "alive": True,
+                "scheme": scheme,
+                "status_code": response.status_code,
+                "final_url": response.url
+            }
+        except requests.exceptions.RequestException:
+            continue
+
+    return {"subdomain": subdomain, "alive": False}
+
 
 
 @app.route("/scan")
@@ -97,11 +220,15 @@ def scan():
 
     subdomains_result = get_subdomains(domain)
     whois_result = get_whois_info(domain)
+    alive_result = check_alive_subdomains(subdomains_result)
+    risk_result = calculate_risk_score(subdomains_result, alive_result)
 
     return jsonify({
         "domain": domain,
         "subdomains": subdomains_result,
-        "whois": whois_result
+        "whois": whois_result,
+        "risk": risk_result,
+        "alive_check": alive_result
     })
 
 
