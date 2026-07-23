@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import requests
 import whois
 import socket
@@ -248,6 +248,9 @@ def _check_single_subdomain(subdomain):
     return {"subdomain": subdomain, "alive": False}
 
 
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 @app.route("/scan")
 def scan():

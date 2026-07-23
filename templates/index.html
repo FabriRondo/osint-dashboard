@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>OSINT Domain Dashboard</title>
+<style>
+    body { background: #0d1117; color: #c9d1d9; font-family: monospace; padding: 40px; }
+    input { padding: 8px; width: 300px; background: #161b22; color: #fff; border: 1px solid #30363d; }
+    button { padding: 8px 16px; background: #238636; color: white; border: none; cursor: pointer; }
+    .box { background: #161b22; border: 1px solid #30363d; padding: 15px; margin-top: 15px; border-radius: 6px; }
+    .risk-BAJO { color: #3fb950; }
+    .risk-MEDIO { color: #d29922; }
+    .risk-ALTO { color: #f85149; }
+    ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<h1>🔍 OSINT Domain Dashboard</h1>
+<input id="domain" placeholder="ejemplo.com">
+<button onclick="scan()">Investigar</button>
+
+<div id="results"></div>
+
+<script>
+async function scan() {
+    const domain = document.getElementById("domain").value;
+    if (!domain) return;
+
+    document.getElementById("results").innerHTML = "<p>Escaneando...</p>";
+
+    const response = await fetch(`/scan?domain=${domain}`);
+    const data = await response.json();
+
+    let html = `<div class="box">
+        <h2>${data.domain}</h2>
+        <p class="risk-${data.risk.level}">Riesgo: ${data.risk.level} (score: ${data.risk.score})</p>
+        <ul>${data.risk.findings.map(f => `<li>${f}</li>`).join("")}</ul>
+    </div>`;
+
+    html += `<div class="box"><h3>Subdominios (${data.subdomains.subdomains ? data.subdomains.subdomains.length : 0})</h3>
+        <ul>${(data.subdomains.subdomains || []).map(s => `<li>${s}</li>`).join("")}</ul>
+    </div>`;
+
+    html += `<div class="box"><h3>WHOIS</h3><pre>${JSON.stringify(data.whois, null, 2)}</pre></div>`;
+
+    document.getElementById("results").innerHTML = html;
+}
+</script>
+</body>
+</html>
