@@ -24,6 +24,7 @@ def calculate_risk_score(subdomains_data, alive_data=None, dns_data=None):
             if entry.get("alive"):
                 alive_lookup[entry["subdomain"]] = entry.get("status_code")
 
+    keyword_score = 0
     for sub in subdomains:
         matched_keyword = None
         for keyword in sensitive_keywords:
@@ -35,20 +36,28 @@ def calculate_risk_score(subdomains_data, alive_data=None, dns_data=None):
             status_code = alive_lookup.get(sub)
 
             if status_code in (401, 403):
-                score += 25
+                keyword_score += 25
                 findings.append(
                     f"Panel/servicio sensible EXPUESTO Y VIVO: {sub} "
                     f"(contiene '{matched_keyword}', responde {status_code})"
                 )
             elif status_code == 200:
-                score += 30
+                keyword_score += 30
                 findings.append(
                     f"Panel/servicio sensible EXPUESTO SIN AUTENTICACIÓN: {sub} "
                     f"(contiene '{matched_keyword}', responde 200)"
                 )
             else:
-                score += 10
+                keyword_score += 10
                 findings.append(f"Subdominio con palabra sensible (no verificado si está vivo): {sub}")
+
+    # Ponemos un techo a esta categoría: un dominio grande puede tener
+    # decenas de subdominios "dev"/"test"/"staging" de forma legítima.
+    # Sin límite, el score se dispara solo por tener muchos, no por ser
+    # más riesgoso. Los hallazgos GRAVES (archivos expuestos más abajo)
+    # no tienen techo, siguen sumando sin límite.
+    MAX_KEYWORD_SCORE = 50
+    score += min(keyword_score, MAX_KEYWORD_SCORE)
 
     total = len(subdomains)
     if total > 30:

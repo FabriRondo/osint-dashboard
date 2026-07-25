@@ -1,4 +1,10 @@
+import re
+
 import requests
+
+_VALID_HOSTNAME_RE = re.compile(
+    r"^(\*\.)?([a-zA-Z0-9](-*[a-zA-Z0-9])*\.)+[a-zA-Z]{2,}$"
+)
 
 
 def _query_crtsh(domain):
@@ -60,6 +66,7 @@ def _query_certspotter(domain):
             subdomains.add(name.strip().lower())
     return subdomains, None
 
+
 def _query_hackertarget(domain):
     """
     Intenta HackerTarget como tercer respaldo. A diferencia de las otras
@@ -97,7 +104,31 @@ def _query_hackertarget(domain):
 
     return subdomains, None
 
-    
+
+def _clean_subdomains(subdomains, domain):
+    """
+    Filtra entradas que no son subdominios reales del dominio investigado:
+    - Direcciones de email que a veces se cuelan en los certificados
+      (aparecen como "Subject Alternative Names")
+    - Nombres con caracteres raros o formato inválido de hostname
+    - Dominios de otras organizaciones que aparecen por error en el
+      mismo certificado (pasa con certificados compartidos/wildcard)
+
+    Solo dejamos pasar entradas que: no tienen "@", tienen formato de
+    hostname válido, y terminan efectivamente en el dominio consultado.
+    """
+    cleaned = set()
+    for sub in subdomains:
+        if "@" in sub:
+            continue
+        if not _VALID_HOSTNAME_RE.match(sub):
+            continue
+        if not (sub == domain or sub.endswith("." + domain) or sub == "*." + domain):
+            continue
+        cleaned.add(sub)
+    return cleaned
+
+
 def get_subdomains(domain):
     """
     Busca subdominios usando crt.sh como fuente principal.
@@ -128,5 +159,7 @@ def get_subdomains(domain):
                 f"Probablemente estén caídos o saturados, probá de nuevo en unos minutos."
             )
         }
+
+    subdomains = _clean_subdomains(subdomains, domain)
 
     return {"domain": domain, "source": source, "subdomains": sorted(subdomains)}
