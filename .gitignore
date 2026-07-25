@@ -2,3 +2,19 @@ venv/
 server.log
 __pycache__/
 *.pyc
+
+# Resultados de escaneos / historiales locales
+resultados.json
+*.log
+
+# Variables de entorno / secretos
+.env
+.env.local
+
+# Archivos de sistema / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Otros logs o outputs que puedan generarse
+*.json.bak
