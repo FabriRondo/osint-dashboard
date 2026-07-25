@@ -72,3 +72,4 @@ def scan_ports(hostname, timeout=1):
     open_ports.sort(key=lambda p: p["port"])
 
     return {"hostname": hostname, "ip": ip, "open_ports": open_ports}
+
