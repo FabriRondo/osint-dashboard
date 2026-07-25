@@ -4,96 +4,331 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OSINT Recon — Fabri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #0a0d0b;
-    --bg-panel: #101512;
-    --bg-panel-alt: #141b17;
-    --border: #1f2b25;
-    --border-bright: #2c3d33;
-    --text: #d9e6df;
-    --text-dim: #7c8f86;
-    --text-faint: #4d5c55;
-    --accent: #8fd14f;
-    --accent-glow: rgba(143,209,79,0.15);
-    --sev-critical: #ff5c5c;
-    --sev-high: #ffa94d;
-    --sev-medium: #ffd43d;
-    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --bg-deep:#05050f;
+    --bg-mid:#0a0a24;
+    --panel: rgba(10,25,39,0.62);
+    --panel-border: rgba(125,211,252,0.16);
+    --border-bright: rgba(125,211,252,0.38);
+    --text:#e9f5fb;
+    --text-dim:#8ba4b4;
+    --text-faint:#4c6474;
+    --accent:#5ecdf2;
+    --accent-2:#9fe8ff;
+    --accent-glow: rgba(94,205,242,0.22);
+    --star: #ffffff;
+    --star-dim: rgba(180,200,255,.55);
+    --sun-core:#ffe3a3;
+    --sun-glow:#ff9d4d;
+    --orbit: rgba(255,255,255,.12);
+    --sev-alto:#ff6f7d;
+    --sev-medio:#ffb454;
+    --sev-bajo:#4fe0c4;
+    --font-display:'Space Grotesk', system-ui, sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;padding:24px;min-height:100vh}
-  h1{font-size:18px;font-weight:600;margin-bottom:4px;letter-spacing:-0.3px}
-  .subtitle{color:var(--text-dim);font-size:12px;margin-bottom:20px}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:var(--font-display);
+    min-height:100vh;
+    overflow-x:hidden;
+    cursor:none;
+  }
+  a, button, input{ cursor:none; }
 
-  .terminal{background:var(--bg-panel);border:1px solid var(--border-bright);border-radius:8px;overflow:hidden;box-shadow:0 20px 60px -20px rgba(0,0,0,0.6)}
-  .terminal-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg-panel-alt);border-bottom:1px solid var(--border)}
-  .dot{width:9px;height:9px;border-radius:50%}.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
-  .terminal-title{font-size:11px;color:var(--text-faint);margin-left:6px}
-  .terminal-body{padding:20px}
+  .cursor-dot{
+    position:fixed; top:0; left:0; width:8px; height:8px;
+    background:#fff; border-radius:50%; z-index:999; pointer-events:none;
+    box-shadow:0 0 10px 2px rgba(255,255,255,.55);
+    transform:translate(-50%,-50%);
+    transition:width .15s ease, height .15s ease, opacity .15s ease;
+  }
+  .cursor-dot.active{ width:14px; height:14px; }
+  @media (hover:none){ .cursor-dot{ display:none; } body{ cursor:auto; } a,button,input{ cursor:auto; } }
 
-  .input-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-  input[type="text"]{flex:1;min-width:200px;padding:10px 14px;border-radius:6px;border:1px solid var(--border-bright);background:var(--bg-panel-alt);color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
-  input[type="text"]:focus{border-color:var(--accent)}
-  button{padding:10px 18px;border-radius:6px;border:1px solid var(--border-bright);background:transparent;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .15s}
-  button:hover{border-color:var(--accent);color:var(--accent)}
-  button.primary{background:var(--accent);color:#0a0d0b;border-color:var(--accent);font-weight:600}
-  button.primary:hover{background:#a3e069;box-shadow:0 0 15px var(--accent-glow)}
+  /* ---------- fondo: estrellas + sistema solar + parallax ---------- */
+  .space{
+    position:fixed; inset:0; z-index:0; overflow:hidden;
+    background:
+      radial-gradient(ellipse 80% 60% at 78% 18%, var(--bg-mid) 0%, var(--bg-deep) 60%);
+  }
+  .stars-layer{ position:absolute; inset:0; transition:transform .3s ease-out; }
+  .stars-layer.far{ opacity:.6; }
+  .star{
+    position:absolute; border-radius:50%; background:var(--star);
+    box-shadow:0 0 4px 0 rgba(255,255,255,.5);
+    animation:twinkle 4s ease-in-out infinite;
+    transition:transform .35s cubic-bezier(.2,.8,.3,1.4), box-shadow .35s ease, opacity .35s ease;
+  }
+  .star.flare{
+    transform:scale(2.6);
+    box-shadow:0 0 16px 4px rgba(255,255,255,.95), 0 0 34px 10px var(--accent-glow);
+    opacity:1 !important;
+  }
+  @keyframes twinkle{
+    0%, 100%{ opacity:.35; }
+    50%{ opacity:1; }
+  }
 
-  .box{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:18px;margin-top:16px}
-  .box h2{font-size:15px;font-weight:600;margin-bottom:10px}
-  .box h3{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--accent)}
-  .risk-ALTO{color:var(--sev-critical);font-weight:700}
-  .risk-MEDIO{color:var(--sev-high);font-weight:700}
-  .risk-BAJO{color:var(--accent);font-weight:700}
-  ul{list-style:none;padding:0}li{margin:6px 0;padding-left:16px;position:relative}
-  li::before{content:'›';position:absolute;left:0;color:var(--accent)}
-  pre{background:var(--bg-panel-alt);padding:12px;border-radius:6px;border:1px solid var(--border);overflow-x:auto;font-size:11.5px;color:var(--text-dim);margin-top:10px}
-  .sub-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .port-btn{padding:3px 10px;font-size:11px;background:var(--bg-panel-alt);border:1px solid var(--border-bright);color:var(--text-dim)}
-  .port-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .port-result{font-size:11.5px;color:var(--text-dim);margin-top:4px}
-  .download-btn{background:var(--accent);color:#0a0d0b;border-color:var(--accent);font-weight:600;margin-top:10px}
-  .download-btn:hover{background:#a3e069}
+  .solar{
+    position:absolute; width:640px; height:640px; top:-190px; right:-160px;
+    transition:transform .3s ease-out;
+  }
+  .sun{
+    position:absolute; top:50%; left:50%; width:150px; height:150px;
+    margin:-75px 0 0 -75px; border-radius:50%;
+    background:radial-gradient(circle at 38% 34%, var(--sun-core), var(--sun-glow) 55%, transparent 75%);
+    box-shadow:0 0 90px 30px rgba(255,157,77,.35);
+  }
+  .orbit{
+    position:absolute; top:50%; left:50%; border:1px solid var(--orbit); border-radius:50%;
+    transform:translate(-50%,-50%);
+  }
+  .orbit-1{ width:260px; height:260px; animation:spin 22s linear infinite; }
+  .orbit-2{ width:400px; height:400px; animation:spin 38s linear infinite; }
+  .orbit-3{ width:560px; height:560px; animation:spin 60s linear infinite; }
+  .orbit span{
+    position:absolute; top:50%; left:100%; width:10px; height:10px; margin:-5px 0 0 -5px;
+    border-radius:50%; box-shadow:0 0 10px 2px currentColor;
+  }
+  .orbit-1 span{ background:var(--accent-2); color:var(--accent-2); }
+  .orbit-2 span{ width:14px; height:14px; margin:-7px 0 0 -7px; background:#ffcf8a; color:#ffcf8a; }
+  .orbit-3 span{ width:7px; height:7px; margin:-3.5px 0 0 -3.5px; background:var(--accent); color:var(--accent); }
+  @keyframes spin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){
+    .stars-layer, .solar{ transition:none; }
+    .orbit-1, .orbit-2, .orbit-3{ animation:none; }
+    .star{ animation:none; opacity:.75; }
+  }
 
-  .loading{color:var(--text-faint);font-style:italic}
-  .error{color:var(--sev-critical)}
+  /* ---------- layout ---------- */
+  main{ position:relative; z-index:2; }
+  .hero{
+    min-height:92vh; min-height:92dvh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 20px 32px;
+    transition: min-height .5s ease, padding .5s ease;
+  }
+  body.has-results .hero{ min-height:46vh; padding:60px 20px 28px; }
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.18em;
+    color:var(--accent); text-transform:uppercase; margin-bottom:18px;
+    opacity:.85;
+  }
+  h1{
+    font-size:clamp(22px,3.4vw,38px); font-weight:600; line-height:1.15;
+    letter-spacing:-0.5px; white-space:nowrap;
+    background:linear-gradient(180deg, var(--text) 40%, var(--accent-2) 130%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    transition:font-size .5s ease;
+  }
+  body.has-results h1{ font-size:clamp(17px,2vw,22px); }
+  @media (max-width:640px){ h1{ white-space:normal; } }
+
+  .search-panel{
+    margin-top:34px; display:flex; align-items:center; gap:6px;
+    width:min(560px, 92vw);
+    background:var(--panel); border:1px solid var(--panel-border);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-radius:14px; padding:6px;
+    box-shadow:0 24px 60px -28px rgba(0,0,0,.75);
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .search-panel:focus-within{
+    border-color:var(--border-bright);
+    box-shadow:0 0 0 4px var(--accent-glow), 0 24px 60px -28px rgba(0,0,0,.75);
+  }
+  .prompt{ font-family:var(--font-mono); color:var(--text-faint); padding-left:10px; font-size:15px; }
+  input[type="text"]{
+    flex:1; min-width:0; background:transparent; border:none; outline:none;
+    color:var(--text); font-family:var(--font-mono); font-size:15px; padding:14px 8px;
+  }
+  input[type="text"]::placeholder{ color:var(--text-faint); }
+  button{
+    font-family:var(--font-display); font-size:14px; font-weight:600;
+    border:none; border-radius:10px; padding:14px 22px; cursor:none;
+    background:transparent; color:var(--text-dim); transition:all .15s ease;
+  }
+  @media (hover:none){ button{ cursor:auto; } }
+  button.primary{
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    color:#03121c; box-shadow:0 8px 24px -8px rgba(94,205,242,.55);
+  }
+  button.primary:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+  button.port-btn{
+    padding:4px 12px; font-size:11px; font-family:var(--font-mono);
+    background:rgba(94,205,242,.06); border:1px solid var(--panel-border); color:var(--text-dim);
+  }
+  button.port-btn:hover{ border-color:var(--accent); color:var(--accent-2); }
+
+  .tags{ margin-top:18px; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .tags span{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-faint);
+    letter-spacing:.04em;
+  }
+  .tags span::before{ content:'·'; color:var(--accent); margin-right:6px; }
+  .tags span:first-child::before{ content:''; margin-right:0; }
+
+  /* ---------- resultados ---------- */
+  .results{ max-width:760px; margin:0 auto; padding:0 20px 90px; }
+  .box{
+    background:var(--panel); border:1px solid var(--panel-border);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-radius:14px; padding:22px 24px; margin-top:16px;
+    opacity:0; transform:translateY(10px);
+    transition:opacity .35s ease, transform .35s ease;
+  }
+  .box.show{ opacity:1; transform:translateY(0); }
+  .box h2{ font-size:17px; font-weight:600; margin-bottom:10px; }
+  .box h3{ font-size:13px; font-weight:600; margin-bottom:12px; color:var(--accent-2);
+    text-transform:uppercase; letter-spacing:.08em; }
+  .risk-ALTO{ color:var(--sev-alto); font-weight:700; }
+  .risk-MEDIO{ color:var(--sev-medio); font-weight:700; }
+  .risk-BAJO{ color:var(--sev-bajo); font-weight:700; }
+  .box.acc-ALTO{ border-left:3px solid var(--sev-alto); }
+  .box.acc-MEDIO{ border-left:3px solid var(--sev-medio); }
+  .box.acc-BAJO{ border-left:3px solid var(--sev-bajo); }
+
+  ul{ list-style:none; }
+  li{ margin:7px 0; padding-left:16px; position:relative; font-size:13.5px; color:var(--text-dim); }
+  li::before{ content:'›'; position:absolute; left:0; color:var(--accent); }
+  .sub-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .sub-row > span{ font-family:var(--font-mono); font-size:13px; color:var(--text); }
+  .port-result{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:4px; padding-left:16px; }
+  .port-result.error{ color:var(--sev-alto); }
+
+  pre{
+    background:rgba(0,0,0,.28); padding:14px; border-radius:10px;
+    border:1px solid var(--panel-border); overflow-x:auto;
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:8px;
+  }
+  .download-btn{
+    display:block; margin:26px auto 0; width:fit-content;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#03121c;
+    font-weight:700; box-shadow:0 8px 24px -8px rgba(94,205,242,.5);
+  }
+  .loading{ text-align:center; color:var(--text-faint); font-family:var(--font-mono); font-size:13px; padding:30px 0; }
+  .error{ color:var(--sev-alto); }
+
+  @media (max-width:560px){
+    .search-panel{ flex-wrap:wrap; }
+    .prompt{ display:none; }
+    button.primary{ width:100%; }
+  }
 </style>
 </head>
 <body>
 
-<h1>🔍 OSINT Recon Dashboard</h1>
-<div class="subtitle">$ recon --target &lt;domain&gt;</div>
-
-<div class="terminal">
-  <div class="terminal-bar">
-    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-    <span class="terminal-title">osint-recon.py — fabri@soc</span>
-  </div>
-  <div class="terminal-body">
-    <div class="input-row">
-      <input id="domain" placeholder="ejemplo.com" onkeydown="if(event.key==='Enter') scan()">
-      <button class="primary" onclick="scan()">Investigar</button>
-    </div>
-    <div id="results"></div>
+<div class="space" aria-hidden="true">
+  <div class="stars-layer far" id="starsFar"></div>
+  <div class="stars-layer near" id="starsNear"></div>
+  <div class="solar" id="solar">
+    <div class="sun"></div>
+    <div class="orbit orbit-1"><span></span></div>
+    <div class="orbit orbit-2"><span></span></div>
+    <div class="orbit orbit-3"><span></span></div>
   </div>
 </div>
+<div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="eyebrow">OSINT · Recon pasivo</div>
+    <h1>Todo dominio deja rastros. Encontralos primero.</h1>
+
+    <div class="search-panel">
+      <span class="prompt">$</span>
+      <input id="domain" type="text" placeholder="ejemplo.com" onkeydown="if(event.key==='Enter') scan()">
+      <button class="primary" onclick="scan()">Investigar →</button>
+    </div>
+
+    <div class="tags">
+      <span>Subdominios</span><span>DNS</span><span>WHOIS</span><span>Riesgo</span><span>Puertos</span>
+    </div>
+  </section>
+
+  <section id="results" class="results"></section>
+</main>
 
 <script>
+/* ============ mapamundi de puntos (proyección equirectangular simplificada) ============ */
+/* ============ fondo: estrellas + sistema solar ============ */
+function buildStars(container, count, sizeRange, opts){
+  const frag = document.createDocumentFragment();
+  for (let i=0; i<count; i++){
+    const star = document.createElement("div");
+    star.className = "star";
+    const size = sizeRange[0] + Math.random()*(sizeRange[1]-sizeRange[0]);
+    star.style.left = (Math.random()*100) + "%";
+    star.style.top = (Math.random()*100) + "%";
+    star.style.width = size + "px";
+    star.style.height = size + "px";
+    star.style.animationDelay = (Math.random()*4) + "s";
+    star.style.animationDuration = (3 + Math.random()*3) + "s";
+    if (opts && opts.dim) star.style.background = "var(--star-dim)";
+    frag.appendChild(star);
+  }
+  container.appendChild(frag);
+}
+buildStars(document.getElementById("starsFar"), 90, [1, 1.6], { dim:true });
+buildStars(document.getElementById("starsNear"), 70, [1.6, 2.8]);
+
+const starsFar = document.getElementById("starsFar");
+const starsNear = document.getElementById("starsNear");
+const solar = document.getElementById("solar");
+const cursorDot = document.getElementById("cursorDot");
+
+window.addEventListener("mousemove", (e) => {
+  const x = e.clientX / window.innerWidth;
+  const y = e.clientY / window.innerHeight;
+  starsFar.style.transform  = `translate(${(x-0.5)*10}px, ${(y-0.5)*10}px)`;
+  starsNear.style.transform = `translate(${(x-0.5)*24}px, ${(y-0.5)*24}px)`;
+  solar.style.transform     = `translate(${(x-0.5)*14}px, ${(y-0.5)*14}px)`;
+  cursorDot.style.left = e.clientX + "px";
+  cursorDot.style.top = e.clientY + "px";
+  queueFlareCheck(e.clientX, e.clientY);
+});
+document.addEventListener("mousedown", () => cursorDot.classList.add("active"));
+document.addEventListener("mouseup", () => cursorDot.classList.remove("active"));
+
+// las estrellas brillan solas al pasar el mouse cerca, sin necesidad de tocarlas
+let flareTicking = false;
+function queueFlareCheck(x, y){
+  if (flareTicking) return;
+  flareTicking = true;
+  requestAnimationFrame(() => {
+    flareNear(x, y);
+    flareTicking = false;
+  });
+}
+function flareNear(x, y){
+  document.querySelectorAll(".star").forEach((star) => {
+    const r = star.getBoundingClientRect();
+    const dx = (r.left + r.width/2) - x;
+    const dy = (r.top + r.height/2) - y;
+    if (Math.hypot(dx, dy) < 60){
+      star.classList.add("flare");
+      clearTimeout(star._flareTimeout);
+      star._flareTimeout = setTimeout(() => star.classList.remove("flare"), 500);
+    }
+  });
+}
+
+/* ============ lógica del dashboard (misma API que el backend Flask) ============ */
 let lastScanData = null;
 
-// Escapa caracteres peligrosos antes de insertar cualquier dato que venga
-// de fuentes externas (subdominios de Certificate Transparency logs, etc.)
-// en el DOM vía innerHTML. Sin esto, alguien podría emitir un certificado
-// para un subdominio con un payload tipo "<img src=x onerror=...>" y
-// ejecutar JS arbitrario en este dashboard.
 function escapeHtml(str) {
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
 }
-
-// Genera un id de DOM seguro a partir de un subdominio arbitrario
 function safeId(str) {
     return "ports-" + str.replace(/[^a-zA-Z0-9]/g, "_");
 }
@@ -102,7 +337,10 @@ async function scan() {
     const domain = document.getElementById("domain").value.trim();
     if (!domain) return;
 
-    document.getElementById("results").innerHTML = '<div class="loading">$ consultando fuentes...</div>';
+    document.body.classList.add("has-results");
+    const resultsEl = document.getElementById("results");
+    resultsEl.innerHTML = '<div class="loading">$ consultando fuentes...</div>';
+    resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
 
     try {
         const response = await fetch(`/scan?domain=${encodeURIComponent(domain)}`);
@@ -110,18 +348,18 @@ async function scan() {
         lastScanData = data;
 
         if (data.error) {
-            document.getElementById("results").innerHTML = `<div class="box error">[X] ${escapeHtml(data.error)}</div>`;
+            resultsEl.innerHTML = `<div class="box error">[X] ${escapeHtml(data.error)}</div>`;
+            revealBoxes(resultsEl);
             return;
         }
 
-        let html = `<div class="box">
+        let html = `<div class="box acc-${escapeHtml(data.risk.level)}">
             <h2>${escapeHtml(data.domain)}</h2>
             <p class="risk-${escapeHtml(data.risk.level)}">● Riesgo: ${escapeHtml(data.risk.level)} (score: ${escapeHtml(String(data.risk.score))})</p>
             <ul>${data.risk.findings.map(f => `<li>${escapeHtml(f)}</li>`).join("")}</ul>
         </div>`;
 
         const subdomains = data.subdomains.subdomains || [];
-        // detalles del alive-check (incluye deep scan: tecnologías, CVEs, rutas expuestas)
         const detailsBySubdomain = {};
         const aliveDetails = (data.alive_check && data.alive_check.details) || [];
         aliveDetails.forEach(d => { detailsBySubdomain[d.subdomain] = d; });
@@ -136,15 +374,8 @@ async function scan() {
                     const paths = detail.exposed_paths || [];
 
                     if (techs.length > 0) {
-                        extra += `<div class="port-result">Tecnología: ${techs.map(t => escapeHtml(t.name)).join(", ")}</div>`;
-                        techs.forEach(t => {
-                            if (t.cves && t.cves.length > 0) {
-                                const cveList = t.cves.map(c => escapeHtml(c.id)).join(", ");
-                                extra += `<div class="port-result error">⚠ CVEs conocidas para ${escapeHtml(t.name)}: ${cveList}</div>`;
-                            }
-                        });
+                        extra += `<div class="port-result">Tecnología: ${techs.map(escapeHtml).join(", ")}</div>`;
                     }
-
                     if (paths.length > 0) {
                         extra += `<div class="port-result error">⚠ Archivo(s) expuesto(s): ${paths.map(escapeHtml).join(", ")}</div>`;
                     }
@@ -158,8 +389,7 @@ async function scan() {
                     </div>
                     ${extra}
                     <div class="port-result" id="${safeId(s)}"></div>
-                </li>
-            `;
+                </li>`;
             }).join("")}</ul>
         </div>`;
 
@@ -191,10 +421,24 @@ TXT:  ${(rec.TXT || []).map(escapeHtml).join("\n      ") || "—"}</pre>
         html += `<div class="box"><h3>WHOIS</h3><pre>${escapeHtml(JSON.stringify(data.whois, null, 2))}</pre></div>`;
         html += `<button class="download-btn" onclick="downloadJSON()">⬇ Descargar reporte JSON</button>`;
 
-        document.getElementById("results").innerHTML = html;
+        resultsEl.innerHTML = html;
+        revealBoxes(resultsEl);
     } catch (e) {
-        document.getElementById("results").innerHTML = `<div class="box error">[X] Error de conexión: ${escapeHtml(e.message)}</div>`;
+        resultsEl.innerHTML = `<div class="box error">[X] Error de conexión: ${escapeHtml(e.message)}</div>`;
+        revealBoxes(resultsEl);
     }
+}
+
+// hace visibles las tarjetas de resultado; usa rAF doble y un fallback por timeout
+// para que nunca queden pegadas en opacity:0 si el navegador no llega a pintar a tiempo
+function revealBoxes(container){
+    const boxes = container.querySelectorAll(".box");
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            boxes.forEach(b => b.classList.add("show"));
+        });
+    });
+    setTimeout(() => boxes.forEach(b => b.classList.add("show")), 150);
 }
 
 async function scanPorts(hostname, btn) {
