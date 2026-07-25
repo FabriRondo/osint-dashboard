@@ -99,3 +99,4 @@ def _check_email_security(spf_txt_records, dmarc_txt_records):
         result["issues"].append("No se encontró registro DMARC")
 
     return result
+
