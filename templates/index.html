@@ -2,88 +2,220 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>OSINT Domain Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSINT Recon — Fabri</title>
 <style>
-    body { background: #0d1117; color: #c9d1d9; font-family: monospace; padding: 40px; }
-    input { padding: 8px; width: 300px; background: #161b22; color: #fff; border: 1px solid #30363d; }
-    button { padding: 8px 16px; background: #238636; color: white; border: none; cursor: pointer; border-radius: 4px; }
-    button:hover { background: #2ea043; }
-    .box { background: #161b22; border: 1px solid #30363d; padding: 15px; margin-top: 15px; border-radius: 6px; }
-    .risk-BAJO { color: #3fb950; }
-    .risk-MEDIO { color: #d29922; }
-    .risk-ALTO { color: #f85149; }
-    ul { padding-left: 20px; }
-    li { margin: 6px 0; }
-    .sub-row { display: flex; align-items: center; gap: 10px; }
-    .port-btn { padding: 3px 10px; font-size: 12px; background: #21262d; border: 1px solid #30363d; }
-    .port-btn:hover { background: #30363d; }
-    .port-result { font-size: 13px; color: #8b949e; margin-top: 4px; }
-    .download-btn { background: #1f6feb; margin-top: 15px; }
+  :root{
+    --bg: #0a0d0b;
+    --bg-panel: #101512;
+    --bg-panel-alt: #141b17;
+    --border: #1f2b25;
+    --border-bright: #2c3d33;
+    --text: #d9e6df;
+    --text-dim: #7c8f86;
+    --text-faint: #4d5c55;
+    --accent: #8fd14f;
+    --accent-glow: rgba(143,209,79,0.15);
+    --sev-critical: #ff5c5c;
+    --sev-high: #ffa94d;
+    --sev-medium: #ffd43d;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;padding:24px;min-height:100vh}
+  h1{font-size:18px;font-weight:600;margin-bottom:4px;letter-spacing:-0.3px}
+  .subtitle{color:var(--text-dim);font-size:12px;margin-bottom:20px}
+
+  .terminal{background:var(--bg-panel);border:1px solid var(--border-bright);border-radius:8px;overflow:hidden;box-shadow:0 20px 60px -20px rgba(0,0,0,0.6)}
+  .terminal-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg-panel-alt);border-bottom:1px solid var(--border)}
+  .dot{width:9px;height:9px;border-radius:50%}.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+  .terminal-title{font-size:11px;color:var(--text-faint);margin-left:6px}
+  .terminal-body{padding:20px}
+
+  .input-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  input[type="text"]{flex:1;min-width:200px;padding:10px 14px;border-radius:6px;border:1px solid var(--border-bright);background:var(--bg-panel-alt);color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
+  input[type="text"]:focus{border-color:var(--accent)}
+  button{padding:10px 18px;border-radius:6px;border:1px solid var(--border-bright);background:transparent;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .15s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#0a0d0b;border-color:var(--accent);font-weight:600}
+  button.primary:hover{background:#a3e069;box-shadow:0 0 15px var(--accent-glow)}
+
+  .box{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:18px;margin-top:16px}
+  .box h2{font-size:15px;font-weight:600;margin-bottom:10px}
+  .box h3{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--accent)}
+  .risk-ALTO{color:var(--sev-critical);font-weight:700}
+  .risk-MEDIO{color:var(--sev-high);font-weight:700}
+  .risk-BAJO{color:var(--accent);font-weight:700}
+  ul{list-style:none;padding:0}li{margin:6px 0;padding-left:16px;position:relative}
+  li::before{content:'›';position:absolute;left:0;color:var(--accent)}
+  pre{background:var(--bg-panel-alt);padding:12px;border-radius:6px;border:1px solid var(--border);overflow-x:auto;font-size:11.5px;color:var(--text-dim);margin-top:10px}
+  .sub-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .port-btn{padding:3px 10px;font-size:11px;background:var(--bg-panel-alt);border:1px solid var(--border-bright);color:var(--text-dim)}
+  .port-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .port-result{font-size:11.5px;color:var(--text-dim);margin-top:4px}
+  .download-btn{background:var(--accent);color:#0a0d0b;border-color:var(--accent);font-weight:600;margin-top:10px}
+  .download-btn:hover{background:#a3e069}
+
+  .loading{color:var(--text-faint);font-style:italic}
+  .error{color:var(--sev-critical)}
 </style>
 </head>
 <body>
-<h1>🔍 OSINT Domain Dashboard</h1>
-<input id="domain" placeholder="ejemplo.com" onkeydown="if(event.key==='Enter') scan()">
-<button onclick="scan()">Investigar</button>
 
-<div id="results"></div>
+<h1>🔍 OSINT Recon Dashboard</h1>
+<div class="subtitle">$ recon --target &lt;domain&gt;</div>
+
+<div class="terminal">
+  <div class="terminal-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="terminal-title">osint-recon.py — fabri@soc</span>
+  </div>
+  <div class="terminal-body">
+    <div class="input-row">
+      <input id="domain" placeholder="ejemplo.com" onkeydown="if(event.key==='Enter') scan()">
+      <button class="primary" onclick="scan()">Investigar</button>
+    </div>
+    <div id="results"></div>
+  </div>
+</div>
 
 <script>
 let lastScanData = null;
 
+// Escapa caracteres peligrosos antes de insertar cualquier dato que venga
+// de fuentes externas (subdominios de Certificate Transparency logs, etc.)
+// en el DOM vía innerHTML. Sin esto, alguien podría emitir un certificado
+// para un subdominio con un payload tipo "<img src=x onerror=...>" y
+// ejecutar JS arbitrario en este dashboard.
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Genera un id de DOM seguro a partir de un subdominio arbitrario
+function safeId(str) {
+    return "ports-" + str.replace(/[^a-zA-Z0-9]/g, "_");
+}
+
 async function scan() {
-    const domain = document.getElementById("domain").value;
+    const domain = document.getElementById("domain").value.trim();
     if (!domain) return;
 
-    document.getElementById("results").innerHTML = "<p>Escaneando...</p>";
+    document.getElementById("results").innerHTML = '<div class="loading">$ consultando fuentes...</div>';
 
-    const response = await fetch(`/scan?domain=${domain}`);
-    const data = await response.json();
-    lastScanData = data;
+    try {
+        const response = await fetch(`/scan?domain=${encodeURIComponent(domain)}`);
+        const data = await response.json();
+        lastScanData = data;
 
-    let html = `<div class="box">
-        <h2>${data.domain}</h2>
-        <p class="risk-${data.risk.level}">Riesgo: ${data.risk.level} (score: ${data.risk.score})</p>
-        <ul>${data.risk.findings.map(f => `<li>${f}</li>`).join("")}</ul>
-    </div>`;
+        if (data.error) {
+            document.getElementById("results").innerHTML = `<div class="box error">[X] ${escapeHtml(data.error)}</div>`;
+            return;
+        }
 
-    const subdomains = data.subdomains.subdomains || [];
-    html += `<div class="box"><h3>Subdominios (${subdomains.length})</h3>
-        <ul>${subdomains.map(s => `
-            <li>
-                <div class="sub-row">
-                    <span>${s}</span>
-                    ${s.startsWith("*.") ? "" : `<button class="port-btn" onclick="scanPorts('${s}', this)">ver puertos</button>`}
-                </div>
-                <div class="port-result" id="ports-${s.replace(/[^a-zA-Z0-9]/g, '_')}"></div>
-            </li>
-        `).join("")}</ul>
-    </div>`;
+        let html = `<div class="box">
+            <h2>${escapeHtml(data.domain)}</h2>
+            <p class="risk-${escapeHtml(data.risk.level)}">● Riesgo: ${escapeHtml(data.risk.level)} (score: ${escapeHtml(String(data.risk.score))})</p>
+            <ul>${data.risk.findings.map(f => `<li>${escapeHtml(f)}</li>`).join("")}</ul>
+        </div>`;
 
-    html += `<div class="box"><h3>WHOIS</h3><pre>${JSON.stringify(data.whois, null, 2)}</pre></div>`;
+        const subdomains = data.subdomains.subdomains || [];
+        // detalles del alive-check (incluye deep scan: tecnologías, CVEs, rutas expuestas)
+        const detailsBySubdomain = {};
+        const aliveDetails = (data.alive_check && data.alive_check.details) || [];
+        aliveDetails.forEach(d => { detailsBySubdomain[d.subdomain] = d; });
 
-    html += `<button class="download-btn" onclick="downloadJSON()">⬇ Descargar reporte JSON</button>`;
+        html += `<div class="box"><h3>Subdominios encontrados (${subdomains.length})</h3>
+            <ul>${subdomains.map(s => {
+                const detail = detailsBySubdomain[s];
+                let extra = "";
 
-    document.getElementById("results").innerHTML = html;
+                if (detail && detail.alive) {
+                    const techs = detail.technologies || [];
+                    const paths = detail.exposed_paths || [];
+
+                    if (techs.length > 0) {
+                        extra += `<div class="port-result">Tecnología: ${techs.map(t => escapeHtml(t.name)).join(", ")}</div>`;
+                        techs.forEach(t => {
+                            if (t.cves && t.cves.length > 0) {
+                                const cveList = t.cves.map(c => escapeHtml(c.id)).join(", ");
+                                extra += `<div class="port-result error">⚠ CVEs conocidas para ${escapeHtml(t.name)}: ${cveList}</div>`;
+                            }
+                        });
+                    }
+
+                    if (paths.length > 0) {
+                        extra += `<div class="port-result error">⚠ Archivo(s) expuesto(s): ${paths.map(escapeHtml).join(", ")}</div>`;
+                    }
+                }
+
+                return `
+                <li>
+                    <div class="sub-row">
+                        <span>${escapeHtml(s)}</span>
+                        ${s.startsWith("*.") ? "" : `<button class="port-btn" onclick="scanPorts('${escapeHtml(s)}', this)">ver puertos</button>`}
+                    </div>
+                    ${extra}
+                    <div class="port-result" id="${safeId(s)}"></div>
+                </li>
+            `;
+            }).join("")}</ul>
+        </div>`;
+
+        if (data.dns && !data.dns.error) {
+            const dns = data.dns;
+            const rec = dns.records || {};
+            const es = dns.email_security || {};
+
+            html += `<div class="box"><h3>DNS Records</h3>
+                <pre>A:    ${(rec.A || []).map(escapeHtml).join(", ") || "—"}
+AAAA: ${(rec.AAAA || []).map(escapeHtml).join(", ") || "—"}
+MX:   ${(rec.MX || []).map(escapeHtml).join(", ") || "—"}
+NS:   ${(rec.NS || []).map(escapeHtml).join(", ") || "—"}
+TXT:  ${(rec.TXT || []).map(escapeHtml).join("\n      ") || "—"}</pre>
+                ${dns.resolution_warnings ? `<p class="error">⚠ No se pudo confirmar contra ningún resolver: ${Object.keys(dns.resolution_warnings).map(escapeHtml).join(", ")} (puede ser un falso negativo, no necesariamente ausencia real del registro)</p>` : ""}
+            </div>`;
+
+            const spfIcon = es.spf ? "✅" : "❌";
+            const dmarcIcon = es.dmarc ? "✅" : "❌";
+            html += `<div class="box"><h3>Email Security Posture</h3>
+                <p>SPF: ${spfIcon} ${es.spf ? "Configurado" : "No encontrado"}</p>
+                <p>DMARC: ${dmarcIcon} ${es.dmarc ? "Configurado" : "No encontrado"}</p>
+                ${(es.issues || []).length > 0 ? `<ul>${es.issues.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : ""}
+            </div>`;
+        } else if (data.dns && data.dns.error) {
+            html += `<div class="box error">DNS: ${escapeHtml(data.dns.error)}</div>`;
+        }
+
+        html += `<div class="box"><h3>WHOIS</h3><pre>${escapeHtml(JSON.stringify(data.whois, null, 2))}</pre></div>`;
+        html += `<button class="download-btn" onclick="downloadJSON()">⬇ Descargar reporte JSON</button>`;
+
+        document.getElementById("results").innerHTML = html;
+    } catch (e) {
+        document.getElementById("results").innerHTML = `<div class="box error">[X] Error de conexión: ${escapeHtml(e.message)}</div>`;
+    }
 }
 
 async function scanPorts(hostname, btn) {
     btn.textContent = "escaneando...";
     btn.disabled = true;
 
-    const response = await fetch(`/portscan?host=${hostname}`);
-    const data = await response.json();
+    try {
+        const response = await fetch(`/portscan?host=${encodeURIComponent(hostname)}`);
+        const data = await response.json();
+        const el = document.getElementById(safeId(hostname));
 
-    const targetId = `ports-${hostname.replace(/[^a-zA-Z0-9]/g, '_')}`;
-    const el = document.getElementById(targetId);
-
-    if (data.error) {
-        el.textContent = `⚠ ${data.error}`;
-    } else if (data.open_ports.length === 0) {
-        el.textContent = `IP: ${data.ip} — sin puertos comunes abiertos`;
-    } else {
-        const portsList = data.open_ports.map(p => `${p.port}/${p.service}`).join(", ");
-        el.textContent = `IP: ${data.ip} — puertos abiertos: ${portsList}`;
+        if (data.error) {
+            el.textContent = `⚠ ${data.error}`;
+        } else if (data.open_ports.length === 0) {
+            el.textContent = `IP: ${data.ip} — sin puertos comunes abiertos`;
+        } else {
+            const portsList = data.open_ports.map(p => `${p.port}/${p.service}`).join(", ");
+            el.textContent = `IP: ${data.ip} — puertos abiertos: ${portsList}`;
+        }
+    } catch (e) {
+        document.getElementById(safeId(hostname)).textContent = `⚠ Error: ${e.message}`;
     }
 
     btn.textContent = "ver puertos";
@@ -101,5 +233,6 @@ function downloadJSON() {
     URL.revokeObjectURL(url);
 }
 </script>
+
 </body>
 </html>
