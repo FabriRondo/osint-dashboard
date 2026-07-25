@@ -51,3 +51,4 @@ def get_whois_info(domain, timeout=8):
         "expiration_date": str(expiration_date) if expiration_date else None,
         "name_servers": w.name_servers,
     }
+
