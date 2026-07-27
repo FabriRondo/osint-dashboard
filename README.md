@@ -19,13 +19,13 @@ Automatiza varias tareas de reconocimiento que un analista SOC / pentester junio
 
 ## Cómo funciona
 
-1. **Enumeración de subdominios** — consulta crt.sh (certificados TLS emitidos) como fuente principal, con fallback a Certspotter si falla.
+1. **Enumeración de subdominios** — consulta tres fuentes en cascada: crt.sh (certificados TLS) como principal, con fallback automático a Certspotter y luego a HackerTarget si las anteriores fallan. Filtra resultados inválidos (direcciones de email o dominios ajenos que a veces se cuelan en los certificados).
 2. **Verificación de vida** — chequea en paralelo (ThreadPoolExecutor) cuáles subdominios responden por HTTP/HTTPS.
 3. **Deep scan** — sobre una muestra de subdominios activos, hace fingerprinting de tecnología (headers, patrones HTML) y prueba rutas sensibles conocidas.
 4. **DNS y seguridad de email** — resuelve registros A/AAAA/MX/TXT/NS y evalúa configuración de SPF y DMARC.
 5. **WHOIS** — datos de registro del dominio, con timeout controlado (la librería `python-whois` puede colgarse sin esto).
 6. **Port scan** — escaneo de puertos comunes, con protección anti-SSRF (rechaza IPs privadas/internas).
-7. **Risk score** — combina todos los hallazgos en un score (BAJO/MEDIO/ALTO) con findings explicados.
+7. **Risk score** — combina todos los hallazgos en un score (BAJO/MEDIO/ALTO). Las coincidencias de "palabra sensible en el nombre" tienen un techo máximo de puntos (para no inflar el score en dominios grandes con muchos ambientes dev/test legítimos), mientras que hallazgos graves confirmados (archivos sensibles expuestos) no tienen límite.
 
 ## Requisitos
 

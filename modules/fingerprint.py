@@ -80,3 +80,4 @@ def _check_sensitive_paths(base_url, timeout=1.5):
             continue
 
     return exposed
+

@@ -83,3 +83,4 @@ def check_alive_subdomains(subdomains_data, limit=15, deep_scan_limit=3):
         "deep_scanned": len(alive_subs),
         "details": results
     }
+
