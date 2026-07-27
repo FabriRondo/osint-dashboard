@@ -84,3 +84,11 @@ osint-dashboard/
 - Exportar historial a CSV.
 - Rate limiting configurable para reducir el volumen de requests contra el objetivo.
 - Modo "solo pasivo" que desactive fingerprinting y chequeo de rutas sensibles.
+
+## Correr con Docker
+
+```bash
+docker compose up --build
+```
+
+Accedé en http://localhost:5000

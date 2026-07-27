@@ -18,3 +18,6 @@ resultados.json
 
 # Otros logs o outputs que puedan generarse
 *.json.bak
+venv/
+server.log
+__pycache__/

@@ -54,4 +54,4 @@ def portscan():
 if __name__ == "__main__":
     # DEBUG solo si se define explícitamente FLASK_DEBUG=1
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(debug=debug_mode, port=5000)
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
